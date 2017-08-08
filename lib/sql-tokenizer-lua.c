@@ -39,7 +39,7 @@ static int proxy_tokenize_token_get(lua_State *L) {
 		lua_pushinteger(L, token->token_id);
 		return 1;
 	} else if (strleq(key, keysize, C("token_name"))) {
-		size_t token_name_len;
+		size_t token_name_len = 0;
 		const char *token_name = sql_token_get_name(token->token_id, &token_name_len);
 		lua_pushlstring(L, token_name, token_name_len);
 		return 1;

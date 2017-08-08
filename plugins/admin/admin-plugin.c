@@ -208,7 +208,7 @@ NETWORK_MYSQLD_PLUGIN_PROTO(server_con_init) {
 	challenge->server_version_str = g_strdup("5.0.99-agent-admin");
 	challenge->server_version     = 50099;
 	challenge->charset            = 0x08; /* latin1 */
-	challenge->capabilities       = CLIENT_PROTOCOL_41 | CLIENT_SECURE_CONNECTION | CLIENT_LONG_PASSWORD;
+	challenge->capabilities       = CLIENT_PROTOCOL_41 | CLIENT_RESERVED2 | CLIENT_LONG_PASSWORD;
 	challenge->server_status      = SERVER_STATUS_AUTOCOMMIT;
 	challenge->thread_id          = 1;
 

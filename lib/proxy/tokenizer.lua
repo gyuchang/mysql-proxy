@@ -118,6 +118,7 @@ function first_stmt_token(tokens)
 		local token = tokens[i]
 		-- normalize the query
 		if token["token_name"] == "TK_COMMENT" then
+		elseif token["token_name"] == "TK_COMMENT_MYSQL" then
 		elseif token["token_name"] == "TK_LITERAL" then
 			-- commit and rollback at LITERALS
 			return token

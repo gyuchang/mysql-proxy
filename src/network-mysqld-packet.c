@@ -1128,10 +1128,10 @@ network_mysqld_auth_challenge *network_mysqld_auth_challenge_new() {
 
 	shake = g_new0(network_mysqld_auth_challenge, 1);
 	
-	shake->auth_plugin_data = g_string_new("");
+	shake->auth_plugin_data = g_string_sized_new(20); 
 	shake->capabilities = 
 		CLIENT_PROTOCOL_41 |
-		CLIENT_SECURE_CONNECTION |
+		CLIENT_RESERVED2 |
 		0;
 	shake->auth_plugin_name = g_string_new(NULL);
 
@@ -1259,7 +1259,7 @@ int network_mysqld_proto_get_auth_challenge(network_packet *packet, network_mysq
 							shake->auth_plugin_name);
 				}
 			}
-		} else if (shake->capabilities & CLIENT_SECURE_CONNECTION) {
+		} else if (shake->capabilities & CLIENT_RESERVED2) {
 			err = err || network_mysqld_proto_get_string_len(packet, &auth_plugin_data_2, 12);
 			err = err || network_mysqld_proto_skip(packet, 1);
 		}
@@ -1305,7 +1305,7 @@ int network_mysqld_proto_get_auth_challenge(network_packet *packet, network_mysq
 			if (auth_plugin_data_len > 8) {
 				g_string_append_len(shake->auth_plugin_data, auth_plugin_data_2, auth_plugin_data_len - 8);
 			}
-		} else if (shake->capabilities & CLIENT_SECURE_CONNECTION) {
+		} else if (shake->capabilities & CLIENT_RESERVED2) {
 			g_string_assign_len(shake->auth_plugin_data, auth_plugin_data_1, 8);
 			g_string_append_len(shake->auth_plugin_data, auth_plugin_data_2, 12);
 		} else {
@@ -1318,7 +1318,7 @@ int network_mysqld_proto_get_auth_challenge(network_packet *packet, network_mysq
 			if (shake->auth_plugin_data->len != auth_plugin_data_len) {
 				err = 1;
 			}
-		} else if (shake->capabilities & CLIENT_SECURE_CONNECTION) {
+		} else if (shake->capabilities & CLIENT_RESERVED2) {
 			if (shake->auth_plugin_data->len != 20) {
 				err = 1;
 			}
@@ -1386,7 +1386,7 @@ int network_mysqld_proto_append_auth_challenge(GString *packet, network_mysqld_a
 		    (shake->server_version >= 50602)) {
 			g_string_append_c(packet, 0x00);
 		}
-	} else if (shake->capabilities & CLIENT_SECURE_CONNECTION) {
+	} else if (shake->capabilities & CLIENT_RESERVED2) {
 		/* if we only have SECURE_CONNECTION it is 0-terminated */
 		if (shake->auth_plugin_data->len) {
 			g_assert_cmpint(shake->auth_plugin_data->len, >=, 8);
@@ -1412,7 +1412,7 @@ network_mysqld_auth_response *network_mysqld_auth_response_new(guint32 server_ca
 	auth->auth_plugin_name = g_string_new(NULL);
 	auth->username = g_string_new("");
 	auth->database = g_string_new("");
-	auth->client_capabilities = CLIENT_SECURE_CONNECTION | CLIENT_PROTOCOL_41;
+	auth->client_capabilities = CLIENT_RESERVED2 | CLIENT_PROTOCOL_41;
 	auth->server_capabilities = server_capabilities;
 
 	return auth;
@@ -1469,8 +1469,8 @@ int network_mysqld_proto_get_auth_response(network_packet *packet, network_mysql
 		err = err || network_mysqld_proto_skip(packet, 23);
 	
 		err = err || network_mysqld_proto_get_gstring(packet, auth->username);
-		if ((auth->server_capabilities & CLIENT_SECURE_CONNECTION) &&
-		    (auth->server_capabilities & CLIENT_SECURE_CONNECTION)) {
+		if ((auth->server_capabilities & CLIENT_RESERVED2) &&
+		    (auth->server_capabilities & CLIENT_RESERVED2)) {
 			guint8 len;
 			/* new auth is 1-byte-len + data */
 			err = err || network_mysqld_proto_get_int8(packet, &len);
@@ -1537,7 +1537,7 @@ int network_mysqld_proto_append_auth_response(GString *packet, network_mysqld_au
 		network_mysqld_proto_append_int8(packet, 0x00); /* trailing \0 */
 
 		/* scrambled password */
-		if (auth->server_capabilities & CLIENT_SECURE_CONNECTION) {
+		if (auth->server_capabilities & CLIENT_RESERVED2) {
 			/* server supports the secure-auth (4.1+) which is 255 bytes max
 			 *
 			 * if ->len is longer than 255, wrap around ... should be reported back
