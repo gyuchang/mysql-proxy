@@ -589,6 +589,8 @@ network_socket_retval_t network_socket_read(network_socket *sock) {
 #ifdef _WIN32
 			errno = WSAGetLastError();
 #endif
+			g_debug("%s: recv() failed: %s (errno=%d)", G_STRLOC, g_strerror(errno), errno);
+
 			switch (errno) {
 			case E_NET_CONNABORTED:
 			case E_NET_CONNRESET: /** nothing to read, let's let ioctl() handle the close for us */
@@ -600,6 +602,8 @@ network_socket_retval_t network_socket_read(network_socket *sock) {
 				return NETWORK_SOCKET_ERROR;
 			}
 		} else if (len == 0) {
+			g_debug("%s: recv() got 0-length datagram: %s (errno=%d)", G_STRLOC, g_strerror(errno), errno);
+
 			/**
 			 * connection close
 			 *
@@ -680,6 +684,8 @@ static network_socket_retval_t network_socket_write_writev(network_socket *con, 
 	g_free(iov);
 
 	if (-1 == len) {
+		g_message("%s.%d: writev(%s, ...) failed: %s", __FILE__, __LINE__, con->dst->name->str, g_strerror(errno));
+
 		switch (os_errno) {
 		case E_NET_WOULDBLOCK:
 		case EAGAIN:
@@ -697,6 +703,8 @@ static network_socket_retval_t network_socket_write_writev(network_socket *con, 
 			return NETWORK_SOCKET_ERROR;
 		}
 	} else if (len == 0) {
+		g_message("%s.%d: writev() failed", __FILE__, __LINE__);
+
 		return NETWORK_SOCKET_ERROR;
 	}
 
@@ -719,6 +727,8 @@ static network_socket_retval_t network_socket_write_writev(network_socket *con, 
 
 			chunk = con->send_queue->chunks->head;
 		} else {
+			g_message("%s.%d: writev() more data to send", __FILE__, __LINE__);
+
 			return NETWORK_SOCKET_WAIT_FOR_EVENT;
 		}
 	}
@@ -753,6 +763,7 @@ static network_socket_retval_t network_socket_write_send(network_socket *con, in
 #ifdef _WIN32
 			errno = WSAGetLastError();
 #endif
+			g_message("%s: send(%s, %"G_GSIZE_FORMAT") failed: %s", G_STRLOC, con->dst->name->str, s->len - con->send_queue->offset, g_strerror(errno));
 			switch (errno) {
 			case E_NET_WOULDBLOCK:
 			case EAGAIN:
@@ -786,6 +797,8 @@ static network_socket_retval_t network_socket_write_send(network_socket *con, in
 
 			chunk = con->send_queue->chunks->head;
 		} else {
+			g_message("%s.%d: send() more data to send", __FILE__, __LINE__);
+
 			return NETWORK_SOCKET_WAIT_FOR_EVENT;
 		}
 	}
