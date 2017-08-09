@@ -251,10 +251,10 @@ network_mysqld_con *network_mysqld_con_new() {
 	con->connect_timeout.tv_sec = 2 * SECONDS;
 	con->connect_timeout.tv_usec = 0;
 
-	con->read_timeout.tv_sec = 1 * SECONDS;
+	con->read_timeout.tv_sec = 8 * HOURS;
 	con->read_timeout.tv_usec = 0;
 	
-	con->write_timeout.tv_sec = 1 * SECONDS;
+	con->write_timeout.tv_sec = 8 * HOURS;
 	con->write_timeout.tv_usec = 0;
 #undef SECONDS
 #undef MINUTES
@@ -589,7 +589,6 @@ network_socket_retval_t network_mysqld_con_get_packet(chassis G_GNUC_UNUSED*chas
 	/* read the packet len if the leading packet */
 	if (!network_queue_peek_string(con->recv_queue_raw, NET_HEADER_SIZE, &header)) {
 		/* too small */
-		g_debug("got 0-length packet");
 		return NETWORK_SOCKET_WAIT_FOR_EVENT;
 	}
 
@@ -598,6 +597,7 @@ network_socket_retval_t network_mysqld_con_get_packet(chassis G_GNUC_UNUSED*chas
 
 	/* move the packet from the raw queue to the recv-queue */
 	if ((packet = network_queue_pop_string(con->recv_queue_raw, packet_len + NET_HEADER_SIZE, NULL))) {
+#define NETWORK_DEBUG_TRACE_IO 1
 #ifdef NETWORK_DEBUG_TRACE_IO
 		/* to trace the data we received from the socket, enable this */
 		g_debug_hexdump(G_STRLOC, S(packet));
@@ -1741,7 +1741,7 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 					break;
 				}
 				if (con->state != ostate) break; /* the state has changed (e.g. CON_STATE_ERROR) */
-
+				g_debug("plugin_call");
 				switch (plugin_call(srv, con, con->state)) {
 				case NETWORK_SOCKET_SUCCESS:
 					/* if we don't need the resultset, forward it to the client */

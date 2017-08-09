@@ -64,7 +64,7 @@ typedef struct network_mysqld_con network_mysqld_con; /* forward declaration */
 #ifdef NETWORK_MYSQLD_WANT_CON_TRACK_TIME
 #define NETWORK_MYSQLD_CON_TRACK_TIME(con, name) chassis_timestamps_add(con->timestamps, name, __FILE__, __LINE__)
 #else
-#define NETWORK_MYSQLD_CON_TRACK_TIME(con, name) g_message("%s: %s", G_STRLOC, name)
+#define NETWORK_MYSQLD_CON_TRACK_TIME(con, name)
 #endif
 
 /**

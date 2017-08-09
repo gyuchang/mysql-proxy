@@ -76,6 +76,9 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 	network_mysqld_eof_packet_t *eof_packet;
 	network_mysqld_ok_packet_t *ok_packet;
 
+	g_debug_hexdump(G_STRLOC, S(packet->data));
+	g_debug("query->state: %d", query->state);
+
 	/**
 	 * if we get a OK in the first packet there will be no result-set
 	 */
@@ -83,6 +86,7 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 	case PARSE_COM_QUERY_INIT:
 		err = err || network_mysqld_proto_peek_int8(packet, &status);
 		if (err) break;
+		g_debug("query->state: %d, status: %d", query->state, status);
 
 		switch (status) {
 		case MYSQLD_PACKET_ERR: /* e.g. SELECT * FROM dual -> ERROR 1096 (HY000): No tables used */
@@ -138,6 +142,17 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 	case PARSE_COM_QUERY_FIELD:
 		err = err || network_mysqld_proto_peek_int8(packet, &status);
 		if (err) break;
+		g_debug("query->state: %d, status: %d", query->state, status);
+
+#if MYSQL_VERSION_ID >= 50705
+		g_debug("mysql version: %d", MYSQL_VERSION_ID);
+		if (status == 3) {
+			g_debug("-> PARSE_COM_QUERY_RESULT");
+
+			query->state = PARSE_COM_QUERY_RESULT;
+			break;
+		}
+#endif
 
 		switch (status) {
 		case MYSQLD_PACKET_ERR:
@@ -204,6 +219,8 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 	case PARSE_COM_QUERY_RESULT:
 		err = err || network_mysqld_proto_peek_int8(packet, &status);
 		if (err) break;
+		g_debug("query->state: %d, status: %d", query->state, status);
+
 
 		switch (status) {
 		case MYSQLD_PACKET_EOF:
@@ -243,7 +260,13 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 
 				network_mysqld_eof_packet_free(eof_packet);
 			}
-
+#if MYSQL_VERSION_ID >= 50705
+			g_debug("query->server_status: %d", query->server_status);
+			if (packet->data->len == 11) {
+				query->was_resultset = 1;
+				is_finished = 1;
+			}
+#endif
 			break;
 		case MYSQLD_PACKET_ERR:
 			/* like 

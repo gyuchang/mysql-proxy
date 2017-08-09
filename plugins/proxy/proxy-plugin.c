@@ -1544,7 +1544,7 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_query_result) {
 	}
 
 	is_finished = network_mysqld_proto_get_query_result(&packet, con);
-	if (is_finished == -1) return NETWORK_SOCKET_ERROR; /* something happend, let's get out of here */
+	if (is_finished == -1) return NETWORK_SOCKET_ERROR; /* something happened, let's get out of here */
 
 	con->resultset_is_finished = is_finished;
 
