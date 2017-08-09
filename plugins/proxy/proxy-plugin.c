@@ -715,6 +715,31 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_auth) {
 
 		err = err || network_mysqld_proto_get_auth_response(&packet, auth);
 
+		// remove capabilities we don't support
+		auth->client_capabilities &= (
+				CLIENT_LONG_PASSWORD \
+			   | CLIENT_FOUND_ROWS \
+			   | CLIENT_LONG_FLAG \
+			   | CLIENT_CONNECT_WITH_DB \
+			   | CLIENT_NO_SCHEMA \
+			   | CLIENT_COMPRESS \
+			   | CLIENT_ODBC \
+			   | CLIENT_LOCAL_FILES \
+			   | CLIENT_IGNORE_SPACE \
+			   | CLIENT_PROTOCOL_41 \
+			   | CLIENT_INTERACTIVE \
+			   | CLIENT_SSL \
+			   | CLIENT_IGNORE_SIGPIPE \
+			   | CLIENT_TRANSACTIONS \
+			   | CLIENT_RESERVED \
+			   | CLIENT_RESERVED2 \
+			   | CLIENT_MULTI_RESULTS \
+			   | CLIENT_PS_MULTI_RESULTS \
+			   | CLIENT_SSL_VERIFY_SERVER_CERT \
+			   | CLIENT_REMEMBER_OPTIONS \
+			   | CLIENT_PLUGIN_AUTH
+		);
+
 		if (err) {
 			network_mysqld_auth_response_free(auth);
 			return NETWORK_SOCKET_ERROR;
@@ -895,6 +920,10 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_auth) {
 					g_string_free(auth_resp, TRUE);
 				}
 			} else {
+				// HACK disable unsupported capabilities
+				packet.data->str[6] &= 0xfe;
+				packet.data->str[7] = 0;
+
 				network_mysqld_queue_append_raw(send_sock, send_sock->send_queue, packet.data);
 				con->state = CON_STATE_SEND_AUTH;
 

@@ -144,16 +144,6 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 		if (err) break;
 		g_debug("query->state: %d, status: %d", query->state, status);
 
-#if MYSQL_VERSION_ID >= 50705
-		g_debug("mysql version: %d", MYSQL_VERSION_ID);
-		if (status == 3) {
-			g_debug("-> PARSE_COM_QUERY_RESULT");
-
-			query->state = PARSE_COM_QUERY_RESULT;
-			break;
-		}
-#endif
-
 		switch (status) {
 		case MYSQLD_PACKET_ERR:
 		case MYSQLD_PACKET_OK:
@@ -260,13 +250,6 @@ int network_mysqld_proto_get_com_query_result(network_packet *packet, network_my
 
 				network_mysqld_eof_packet_free(eof_packet);
 			}
-#if MYSQL_VERSION_ID >= 50705
-			g_debug("query->server_status: %d", query->server_status);
-			if (packet->data->len == 11) {
-				query->was_resultset = 1;
-				is_finished = 1;
-			}
-#endif
 			break;
 		case MYSQLD_PACKET_ERR:
 			/* like 
@@ -1493,7 +1476,7 @@ int network_mysqld_proto_get_auth_response(network_packet *packet, network_mysql
 	
 		err = err || network_mysqld_proto_get_gstring(packet, auth->username);
 		if ((auth->server_capabilities & CLIENT_RESERVED2) &&
-		    (auth->server_capabilities & CLIENT_RESERVED2)) {
+		    (auth->client_capabilities & CLIENT_RESERVED2)) {
 			guint8 len;
 			/* new auth is 1-byte-len + data */
 			err = err || network_mysqld_proto_get_int8(packet, &len);
