@@ -1313,7 +1313,6 @@ static network_mysqld_lua_stmt_ret proxy_lua_read_query(network_mysqld_con *con)
  * @see network_mysqld_con_handle_proxy_stmt
  */
 NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_query) {
-	g_message("%s.%d: proxy_read_query ", __FILE__, __LINE__);
 	GString *packet;
 	network_socket *recv_sock, *send_sock;
 	network_mysqld_con_lua_t *st = con->plugin_con_state;
@@ -1440,7 +1439,6 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_query) {
  * @note we should only send one result back to the client
  */
 NETWORK_MYSQLD_PLUGIN_PROTO(proxy_send_query_result) {
-	g_message("%s.%d: proxy_send_query_result ", __FILE__, __LINE__);
 	network_socket *recv_sock, *send_sock;
 	injection *inj;
 	network_mysqld_con_lua_t *st = con->plugin_con_state;

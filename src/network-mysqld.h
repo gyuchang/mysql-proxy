@@ -66,7 +66,6 @@ typedef struct network_mysqld_con network_mysqld_con; /* forward declaration */
 #else
 #define NETWORK_MYSQLD_CON_TRACK_TIME(con, name) g_message("%s: %s", G_STRLOC, name)
 #endif
-#define NETWORK_MYSQLD_CON_TRACK_TIME(con, name)
 
 /**
  * A macro that produces a plugin callback function pointer declaration.

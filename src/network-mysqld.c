@@ -591,10 +591,7 @@ network_socket_retval_t network_mysqld_con_get_packet(chassis G_GNUC_UNUSED*chas
 		/* too small */
 		g_debug("got 0-length packet");
 		return NETWORK_SOCKET_WAIT_FOR_EVENT;
-		/* got 0-length packet */
-		//return NETWORK_SOCKET_SUCCESS;
 	}
-        g_message("here2222");
 
 	packet_len = network_mysqld_proto_get_packet_len(&header);
 	packet_id  = network_mysqld_proto_get_packet_id(&header);
@@ -759,7 +756,9 @@ network_socket_retval_t plugin_call(chassis *srv, network_mysqld_con *con, int s
 				con->state = CON_STATE_READ_AUTH_OLD_PASSWORD;
 				break;
 			default:
-				g_debug("%s.%d: unexpected state for SEND_AUTH_RESULT: %02x", __FILE__, __LINE__, con->auth_result_state);
+				g_debug("%s.%d: unexpected state for SEND_AUTH_RESULT: %02x", 
+						__FILE__, __LINE__,
+						con->auth_result_state);
 				con->state = CON_STATE_ERROR;
 				break;
 			}
@@ -1524,7 +1523,7 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 			case NETWORK_SOCKET_ERROR:
 				g_critical("%s.%d: network_mysqld_read(CON_STATE_READ_AUTH_OLD_PASSWORD) returned an error", __FILE__, __LINE__);
 				con->state = CON_STATE_ERROR;
-				break;
+				return;
 			}
 			
 			if (con->state != ostate) break; /* the state has changed (e.g. CON_STATE_ERROR) */
@@ -1577,7 +1576,6 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 
 			recv_sock = con->client;
 
-
 			g_assert(events == 0 || event_fd == recv_sock->fd);
 
 			do { 
@@ -1594,7 +1592,7 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 				case NETWORK_SOCKET_ERROR:
 					g_critical("%s.%d: network_mysqld_read(CON_STATE_READ_QUERY) returned an error", __FILE__, __LINE__);
 					con->state = CON_STATE_ERROR;
-					break;
+					return;
 				}
 				if (con->state != ostate) break; /* the state has changed (e.g. CON_STATE_ERROR) */
 
@@ -1729,7 +1727,6 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 
 				switch (network_mysqld_read(srv, recv_sock)) {
 				case NETWORK_SOCKET_SUCCESS:
-					g_debug("here");
 					break;
 				case NETWORK_SOCKET_WAIT_FOR_EVENT:
 					timeout = con->read_timeout;
@@ -1739,7 +1736,7 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 					return;
 				case NETWORK_SOCKET_ERROR_RETRY:
 				case NETWORK_SOCKET_ERROR:
-					g_debug("%s.%d: network_mysqld_read(CON_STATE_READ_QUERY_RESULT) returned an error", __FILE__, __LINE__);
+					g_critical("%s.%d: network_mysqld_read(CON_STATE_READ_QUERY_RESULT) returned an error", __FILE__, __LINE__);
 					con->state = CON_STATE_ERROR;
 					break;
 				}
@@ -1761,7 +1758,7 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 					con->state = CON_STATE_ERROR;
 					break;
 				default:
-					g_debug("%s.%d: ...", __FILE__, __LINE__);
+					g_critical("%s.%d: ...", __FILE__, __LINE__);
 					con->state = CON_STATE_ERROR;
 					break;
 				}
@@ -1879,7 +1876,7 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 					break;
 				}
 			/* read packets from the network until the plugin decodes to go to the next state */
-			} while (con->state == ostate);
+			} while (con->state == CON_STATE_READ_LOCAL_INFILE_DATA);
 	
 			break; }
 		case CON_STATE_SEND_LOCAL_INFILE_DATA: 
@@ -2024,7 +2021,6 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 			switch (network_mysqld_write(srv, con->client)) {
 			case NETWORK_SOCKET_SUCCESS:
 				g_debug("%s.%d: NETWORK_SOCKET_SUCCESS", __FILE__, __LINE__);
-				con->state = CON_STATE_CLOSE_CLIENT;
 				break;
 			case NETWORK_SOCKET_WAIT_FOR_EVENT:
 				timeout = con->write_timeout;
@@ -2039,6 +2035,8 @@ void network_mysqld_con_handle(int event_fd, short events, void *user_data) {
 				con->state = CON_STATE_ERROR;
 				break;
 			}
+
+			con->state = CON_STATE_CLOSE_CLIENT;
 
 			break;
 		}
