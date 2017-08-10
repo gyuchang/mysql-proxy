@@ -560,6 +560,9 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_handshake) {
 	challenge->capabilities &= ~(CLIENT_COMPRESS);
 	challenge->capabilities &= ~(CLIENT_SSL);
 
+	// we are still relying on EOF packets
+	challenge->capabilities &= ~(CLIENT_DEPRECATE_EOF);
+
 	switch (proxy_lua_read_handshake(con)) {
 	case PROXY_NO_DECISION:
 		break;

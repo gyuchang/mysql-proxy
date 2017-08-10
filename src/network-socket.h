@@ -36,6 +36,8 @@
 #include <sys/time.h>
 #endif
 
+#include <linux/version.h>
+
 #include <sys/types.h>      /** u_char */
 #ifndef _WIN32
 #include <sys/socket.h>     /** struct sockaddr */

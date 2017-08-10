@@ -188,6 +188,13 @@ network_socket *network_socket_accept(network_socket *srv) {
 
 	client = network_socket_new();
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 28)
+	if (-1 == (client->fd = accept4(srv->fd, &client->src->addr.common, &(client->src->len), SOCK_NONBLOCK))) {
+		network_socket_free(client);
+
+		return NULL;
+	}
+#else
 	if (-1 == (client->fd = accept(srv->fd, &client->src->addr.common, &(client->src->len)))) {
 		network_socket_free(client);
 
@@ -195,6 +202,7 @@ network_socket *network_socket_accept(network_socket *srv) {
 	}
 
 	network_socket_set_non_blocking(client);
+#endif
 
 	if (network_address_refresh_name(client->src)) {
 		network_socket_free(client);
