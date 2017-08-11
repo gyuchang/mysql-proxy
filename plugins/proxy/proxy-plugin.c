@@ -718,6 +718,11 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_auth) {
 
 		err = err || network_mysqld_proto_get_auth_response(&packet, auth);
 
+		// remove capabilities we don't support
+		auth->client_capabilities &= ~(CLIENT_SSL);
+		auth->client_capabilities &= ~(CLIENT_COMPRESS);
+		auth->client_capabilities &= ~(CLIENT_DEPRECATE_EOF);
+
 		if (err) {
 			network_mysqld_auth_response_free(auth);
 			return NETWORK_SOCKET_ERROR;
@@ -898,6 +903,11 @@ NETWORK_MYSQLD_PLUGIN_PROTO(proxy_read_auth) {
 					g_string_free(auth_resp, TRUE);
 				}
 			} else {
+				// disable unsupported capabilities
+				packet.data->str[4] &= 0xDF;		// remove CLIENT_COMPRESS
+				packet.data->str[5] &= 0xF7;		// remove CLIENT_SSL
+				packet.data->str[7] &= 0xFE;		// remove CLIENT_DEPRECATE_EOF
+
 				network_mysqld_queue_append_raw(send_sock, send_sock->send_queue, packet.data);
 				con->state = CON_STATE_SEND_AUTH;
 
