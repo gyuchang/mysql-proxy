@@ -51,7 +51,6 @@
 #include "chassis-keyfile.h"
 #include "chassis-filemode.h"
 #include "chassis-options.h"
-#include "chassis-win32-service.h"
 
 #include "string-len.h"
 
@@ -60,9 +59,6 @@
  */
 int chassis_frontend_init_glib() {
 	const gchar *check_str = NULL;
-#if 0
-	g_mem_set_vtable(glib_mem_profiler_table);
-#endif
 
 	if (!GLIB_CHECK_VERSION(2, 6, 0)) {
 		g_critical("the glib header are too old, need at least 2.6.0, got: %d.%d.%d", 
@@ -90,29 +86,6 @@ int chassis_frontend_init_glib() {
 	g_thread_init(NULL);
 
 	return 0;
-}
-
-/**
- * init the win32 specific components
- *
- * - setup winsock32
- */
-int chassis_frontend_init_win32() {
-#ifdef _WIN32
-	WSADATA wsaData;
-
-	if (0 != WSAStartup(MAKEWORD( 2, 2 ), &wsaData)) {
-		g_critical("%s: WSAStartup(2, 2) failed to initialize the socket library",
-				G_STRLOC);
-
-		return -1;
-	}
-	chassis_win32_invalid_parameter_handler_set(chassis_win32_invalid_parameter_handler_log);
-
-	return 0;
-#else
-	return -1;
-#endif
 }
 
 /**

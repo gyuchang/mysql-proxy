@@ -54,8 +54,7 @@ SET(chassis_sources
 	chassis-frontend.c
 	chassis-options.c
 	chassis-unix-daemon.c
-	chassis-win32-service.c
-)
+		)
 
 SET(timing_sources
 	chassis-timings.c
@@ -259,7 +258,6 @@ INSTALL(FILES
 	chassis-frontend.h
 	chassis-options.h
 	chassis-unix-daemon.h
-	chassis-win32-service.h
 	my_rdtsc.h
 	DESTINATION include/
 	)

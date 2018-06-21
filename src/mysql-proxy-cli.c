@@ -30,47 +30,25 @@
  * @todo move the SQL based help out into a lua script
  */
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>
-
-#ifdef HAVE_SIGNAL_H
 #include <signal.h>
-#endif
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
 
-#ifdef _WIN32
-#include <process.h> /* getpid() */
-#include <io.h>      /* open() */
-#else
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/resource.h> /* for rusage in wait() */
-#endif
 
 #include <glib.h>
 #include <gmodule.h>
-
-#ifdef HAVE_LUA_H
 #include <lua.h>
 #include <stdio.h>
-#endif
-
-#ifdef HAVE_VALGRIND_VALGRIND_H
-#include <valgrind/valgrind.h>
-#endif
-
-#ifndef HAVE_VALGRIND_VALGRIND_H
-#define RUNNING_ON_VALGRIND 0
-#endif
-
 
 #include "network-mysqld.h"
 #include "network-mysqld-proto.h"
@@ -82,16 +60,11 @@
 #include "chassis-path.h"
 #include "chassis-limits.h"
 #include "chassis-filemode.h"
-#include "chassis-win32-service.h"
 #include "chassis-unix-daemon.h"
 #include "chassis-frontend.h"
 #include "chassis-options.h"
 
-#ifdef WIN32
-#define CHASSIS_NEWLINE "\r\n"
-#else
 #define CHASSIS_NEWLINE "\n"
-#endif
 
 #define GETTEXT_PACKAGE "mysql-proxy"
 
@@ -120,10 +93,9 @@ typedef struct {
 	gchar **plugin_names;
 
 	guint invoke_dbg_on_crash;
-#ifndef _WIN32
+
 	/* the --keepalive option isn't available on Unix */
 	guint auto_restart;
-#endif
 
 	gint max_files_number;
 
@@ -251,9 +223,8 @@ static void sigsegv_handler(int G_GNUC_UNUSED signum) {
  */
 int main_cmdline(int argc, char **argv) {
 	chassis *srv = NULL;
-#ifdef HAVE_SIGACTION
 	static struct sigaction sigsegv_sa;
-#endif
+
 	/* read the command-line options */
 	GOptionContext *option_ctx = NULL;
 	GOptionEntry *main_entries = NULL;
@@ -280,16 +251,6 @@ int main_cmdline(int argc, char **argv) {
 	log = chassis_log_new();
 	log->min_lvl = G_LOG_LEVEL_MESSAGE; /* display messages while parsing or loading plugins */
 	g_log_set_default_handler(chassis_log_func, log);
-
-#ifdef _WIN32
-	if (chassis_win32_is_service() && chassis_log_set_event_log(log, g_get_prgname())) {
-		GOTO_EXIT(EXIT_FAILURE);
-	}
-
-	if (chassis_frontend_init_win32()) { /* setup winsock */
-		GOTO_EXIT(EXIT_FAILURE);
-	}
-#endif
 
 	/* may fail on library mismatch */
 	if (NULL == (srv = chassis_new())) {
@@ -389,18 +350,15 @@ int main_cmdline(int argc, char **argv) {
 	/* assign the mysqld part to the */
 	network_mysqld_init(srv); /* starts the also the lua-scope, LUA_PATH and LUA_CPATH have to be set before this being called */
 
-
-#ifdef HAVE_SIGACTION
 	/* register the sigsegv interceptor */
 
 	memset(&sigsegv_sa, 0, sizeof(sigsegv_sa));
 	sigsegv_sa.sa_handler = sigsegv_handler;
 	sigemptyset(&sigsegv_sa.sa_mask);
 
-	if (frontend->invoke_dbg_on_crash && !(RUNNING_ON_VALGRIND)) {
+	if (frontend->invoke_dbg_on_crash) {
 		sigaction(SIGSEGV, &sigsegv_sa, NULL);
 	}
-#endif
 
 	/*
 	 * some plugins cannot see the chassis struct from the point
@@ -525,7 +483,7 @@ int main_cmdline(int argc, char **argv) {
 		GOTO_EXIT(EXIT_FAILURE);
 	}
 
-	/* make sure that he max-thread-count isn't negative */
+	/* make sure that the max-thread-count isn't negative */
 	if (frontend->event_thread_count < 1) {
 		g_critical("--event-threads has to be >= 1, is %d", frontend->event_thread_count);
 
@@ -534,7 +492,6 @@ int main_cmdline(int argc, char **argv) {
 
 	srv->event_thread_count = frontend->event_thread_count;
 	
-#ifndef _WIN32	
 	signal(SIGPIPE, SIG_IGN);
 
 	if (frontend->daemon_mode) {
@@ -556,7 +513,7 @@ int main_cmdline(int argc, char **argv) {
 			/* we are the child, go on */
 		}
 	}
-#endif
+
 	if (frontend->pid_file) {
 		if (0 != chassis_frontend_write_pidfile(frontend->pid_file, &gerr)) {
 			g_critical("%s", gerr->message);
@@ -570,10 +527,6 @@ int main_cmdline(int argc, char **argv) {
 	 * log the versions of all loaded plugins
 	 */
 	chassis_frontend_log_plugin_versions(srv->modules);
-
-#ifdef _WIN32
-	if (chassis_win32_is_service()) chassis_win32_service_set_state(SERVICE_RUNNING, 0);
-#endif
 
 	/*
 	 * we have to drop root privileges in chassis_mainloop() after
@@ -614,10 +567,6 @@ exit_nicely:
 				"shutting down normally, exit code is: %d", exit_code); /* add a tag to the logfile */
 	}
 
-#ifdef _WIN32
-	if (chassis_win32_is_service()) chassis_win32_service_set_state(SERVICE_STOP_PENDING, 0);
-#endif
-
 	if (gerr) g_error_free(gerr);
 	if (option_ctx) g_option_context_free(option_ctx);
 	if (srv) chassis_free(srv);
@@ -626,17 +575,12 @@ exit_nicely:
 
 	chassis_log_free(log);
 	
-#ifdef _WIN32
-	if (chassis_win32_is_service()) chassis_win32_service_set_state(SERVICE_STOPPED, 0);
-#endif
-
-#ifdef HAVE_SIGACTION
 	/* reset the handler */
 	sigsegv_sa.sa_handler = SIG_DFL;
-	if (frontend->invoke_dbg_on_crash && !(RUNNING_ON_VALGRIND)) {
+	if (frontend->invoke_dbg_on_crash) {
 		sigaction(SIGSEGV, &sigsegv_sa, NULL);
 	}
-#endif
+
 	chassis_frontend_free(frontend);	
 
 	return exit_code;
@@ -648,10 +592,6 @@ exit_nicely:
  * We eventually fall down through to main_cmdline, even on Windows.
  */
 int main(int argc, char **argv) {
-#ifdef WIN32_AS_SERVICE
-	return main_win32(argc, argv, main_cmdline);
-#else
 	return main_cmdline(argc, argv);
-#endif
 }
 
